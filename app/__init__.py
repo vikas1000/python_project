@@ -31,4 +31,8 @@ def create_app():
     app.register_blueprint(employee_bp)
     app.register_blueprint(department_bp)
 
+    # Auto-create all tables on startup (works on both local and Render)
+    with app.app_context():
+        db.create_all()
+
     return app
