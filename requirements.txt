@@ -6,3 +6,4 @@ SQLAlchemy
 Werkzeug
 gunicorn
 psycopg2-binary
+greenlet==3.2.3
