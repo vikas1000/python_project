@@ -1,13 +1,35 @@
-<nav class="navbar navbar-expand-lg navbar-light bg-light">
-  <a class="navbar-brand px-4 text-secondary" href="/home">EMS</a>
-  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
-    <span class="navbar-toggler-icon"></span>
-  </button>
-  <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
-    <div class="navbar-nav">
-      <a class="nav-item nav-link active px-4 text-primary" href="/home">Home</a>
-      <a class="nav-item nav-link px-4 text-primary" href="/employee/list">Employee List</a>
-      <a class="nav-item nav-link px-4 text-primary" href="/department">Department</a>
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+    <div class="container-fluid px-4">
+        <a class="navbar-brand" href="/home">
+            <i class="bi bi-people-fill me-2"></i>EMS
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
+                aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="mainNav">
+            <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+                <li class="nav-item">
+                    <a class="nav-link {% if request.path == '/home' %}active{% endif %}" href="/home">
+                        <i class="bi bi-house-door me-1"></i>Home
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if '/employee' in request.path %}active{% endif %}" href="/employee/list">
+                        <i class="bi bi-person-lines-fill me-1"></i>Employees
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.path == '/department' %}active{% endif %}" href="/department">
+                        <i class="bi bi-building me-1"></i>Departments
+                    </a>
+                </li>
+                <li class="nav-item ms-lg-3">
+                    <a class="btn btn-primary btn-sm" href="/employee/add">
+                        <i class="bi bi-person-plus-fill me-1"></i>Add Employee
+                    </a>
+                </li>
+            </ul>
+        </div>
     </div>
-  </div>
 </nav>

@@ -1,46 +1,289 @@
-{% extends "base.html" %} {% block content %}
-<!-- <table border="1">
-        <tr>
-            <th>Name</th>
-            <th>Salary</th>
-        </tr>
+{% extends "base.html" %}
+{% block content %}
 
-        {% for emp in employees %}
-        <tr>
-            <td>{{ emp.name|upper }}</td>
-            <td>{{ emp.salary }}</td>
-        </tr>
-        {% endfor %}
-    </table> -->
+{# ── Macro: build a URL preserving all params but overriding specific ones ── #}
+{% macro list_url(page=pagination.page, sort_by=sort_by, sort_dir=sort_dir,
+                  search=search, department=department,
+                  min_salary=min_salary, max_salary=max_salary) %}
+{{ url_for('employee.employee_list',
+           page=page, sort_by=sort_by, sort_dir=sort_dir,
+           search=search, department=department,
+           min_salary=min_salary, max_salary=max_salary) }}
+{% endmacro %}
 
-<a href="/employee/add" class="btn btn-primary mx-3 my-3">Add Employee</a>
+{# ── Page header ── #}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h3 class="mb-0 fw-bold"><i class="bi bi-people-fill me-2 text-primary"></i>Employee List</h3>
+        <small class="text-muted">
+            Showing {{ employees|length }} of {{ total }} record{{ 's' if total != 1 else '' }}
+            (Page {{ pagination.page }} of {{ pagination.pages if pagination.pages > 0 else 1 }})
+        </small>
+    </div>
+    <a href="/employee/add" class="btn btn-primary">
+        <i class="bi bi-person-plus-fill me-1"></i>Add Employee
+    </a>
+</div>
 
-<table class="table table-hover mx-auto table-bordered">
-  <thead class="table-dark">
-    <tr>
-      <th scope="col">Name</th>
-      <th scope="col">Department</th>
-      <th scope="col">Salary</th>
-      <th scope="col">Email</th>
-      <th scope="col">Action</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for emp in employees %}
-    <tr>
-      <td>{{emp.name}}</td>
-      <td>{{emp.department}}</td>
-      <td>{{emp.salary}}</td>
-      <td>{{emp.email}}</td>
+{# ── Search & Filter card ── #}
+<div class="card mb-4">
+    <div class="card-header bg-white py-3">
+        <h6 class="mb-0 fw-semibold"><i class="bi bi-funnel-fill me-2 text-secondary"></i>Search & Filter</h6>
+    </div>
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('employee.employee_list') }}" id="filterForm">
+            {# keep sort params when re-filtering #}
+            <input type="hidden" name="sort_by"  value="{{ sort_by }}">
+            <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+            <input type="hidden" name="page"     value="1">
 
-      <td>
-        <a href="/employee/employeeDetail/{{emp.id}}" class="btn btn-success"> Detail </a>
-        <a href="/employee/employeeUpdate/{{emp.id}}" class="btn btn-warning"> Edit </a>
-        <a href="/employee/employeeDelete/{{emp.id}}" class="btn btn-danger"> Delete </a>
-      </td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+            <div class="row g-3">
+                {# Search box #}
+                <div class="col-12 col-md-4">
+                    <label class="form-label fw-semibold small">
+                        <i class="bi bi-search me-1"></i>Search
+                    </label>
+                    <input type="text" name="search" class="form-control"
+                           placeholder="Name, email or department…"
+                           value="{{ search }}">
+                </div>
+
+                {# Department drop-down #}
+                <div class="col-12 col-md-3">
+                    <label class="form-label fw-semibold small">
+                        <i class="bi bi-building me-1"></i>Department
+                    </label>
+                    <select name="department" class="form-select">
+                        <option value="">All Departments</option>
+                        {% for dept in all_departments %}
+                        <option value="{{ dept }}" {% if department == dept %}selected{% endif %}>
+                            {{ dept }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                {# Salary range #}
+                <div class="col-6 col-md-2">
+                    <label class="form-label fw-semibold small">
+                        <i class="bi bi-currency-dollar me-1"></i>Min Salary
+                    </label>
+                    <input type="number" name="min_salary" class="form-control"
+                           placeholder="e.g. 30000" value="{{ min_salary }}" min="0">
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label fw-semibold small">
+                        <i class="bi bi-currency-dollar me-1"></i>Max Salary
+                    </label>
+                    <input type="number" name="max_salary" class="form-control"
+                           placeholder="e.g. 100000" value="{{ max_salary }}" min="0">
+                </div>
+
+                {# Buttons #}
+                <div class="col-12 col-md-1 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-filter me-1"></i>Filter
+                    </button>
+                </div>
+            </div>
+
+            {# Active-filter badges + clear link #}
+            {% if search or department or min_salary or max_salary %}
+            <div class="mt-3 d-flex flex-wrap align-items-center gap-2">
+                <span class="text-muted small">Active filters:</span>
+                {% if search %}
+                    <span class="badge bg-info text-dark">Search: {{ search }}</span>
+                {% endif %}
+                {% if department %}
+                    <span class="badge bg-info text-dark">Dept: {{ department }}</span>
+                {% endif %}
+                {% if min_salary %}
+                    <span class="badge bg-info text-dark">Min ₹{{ min_salary }}</span>
+                {% endif %}
+                {% if max_salary %}
+                    <span class="badge bg-info text-dark">Max ₹{{ max_salary }}</span>
+                {% endif %}
+                <a href="{{ url_for('employee.employee_list', sort_by=sort_by, sort_dir=sort_dir) }}"
+                   class="btn btn-sm btn-outline-secondary ms-1">
+                    <i class="bi bi-x-circle me-1"></i>Clear Filters
+                </a>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+{# ── Employee table ── #}
+<div class="card">
+    <div class="card-body p-0">
+        {% if employees %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="ps-3">#</th>
+
+                        {# Sortable: Name #}
+                        {% set next_dir = 'desc' if (sort_by == 'name' and sort_dir == 'asc') else 'asc' %}
+                        <th>
+                            <a class="sort-link text-white"
+                               href="{{ list_url(sort_by='name', sort_dir=next_dir, page=1) }}">
+                                <i class="bi bi-person me-1"></i>Name
+                                {% if sort_by == 'name' %}
+                                    <i class="bi bi-arrow-{{ 'up' if sort_dir == 'asc' else 'down' }}"></i>
+                                {% else %}
+                                    <i class="bi bi-arrow-down-up text-secondary"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+
+                        {# Sortable: Email #}
+                        {% set next_dir = 'desc' if (sort_by == 'email' and sort_dir == 'asc') else 'asc' %}
+                        <th>
+                            <a class="sort-link text-white"
+                               href="{{ list_url(sort_by='email', sort_dir=next_dir, page=1) }}">
+                                <i class="bi bi-envelope me-1"></i>Email
+                                {% if sort_by == 'email' %}
+                                    <i class="bi bi-arrow-{{ 'up' if sort_dir == 'asc' else 'down' }}"></i>
+                                {% else %}
+                                    <i class="bi bi-arrow-down-up text-secondary"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+
+                        {# Sortable: Department #}
+                        {% set next_dir = 'desc' if (sort_by == 'department' and sort_dir == 'asc') else 'asc' %}
+                        <th>
+                            <a class="sort-link text-white"
+                               href="{{ list_url(sort_by='department', sort_dir=next_dir, page=1) }}">
+                                <i class="bi bi-building me-1"></i>Department
+                                {% if sort_by == 'department' %}
+                                    <i class="bi bi-arrow-{{ 'up' if sort_dir == 'asc' else 'down' }}"></i>
+                                {% else %}
+                                    <i class="bi bi-arrow-down-up text-secondary"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+
+                        {# Sortable: Salary #}
+                        {% set next_dir = 'desc' if (sort_by == 'salary' and sort_dir == 'asc') else 'asc' %}
+                        <th>
+                            <a class="sort-link text-white"
+                               href="{{ list_url(sort_by='salary', sort_dir=next_dir, page=1) }}">
+                                <i class="bi bi-cash-stack me-1"></i>Salary
+                                {% if sort_by == 'salary' %}
+                                    <i class="bi bi-arrow-{{ 'up' if sort_dir == 'asc' else 'down' }}"></i>
+                                {% else %}
+                                    <i class="bi bi-arrow-down-up text-secondary"></i>
+                                {% endif %}
+                            </a>
+                        </th>
+
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for emp in employees %}
+                    <tr>
+                        <td class="ps-3 text-muted small">
+                            {{ (pagination.page - 1) * per_page + loop.index }}
+                        </td>
+                        <td class="fw-semibold">{{ emp.name }}</td>
+                        <td class="text-muted">{{ emp.email }}</td>
+                        <td>
+                            <span class="badge bg-secondary bg-opacity-10 text-dark border">
+                                {{ emp.department }}
+                            </span>
+                        </td>
+                        <td class="fw-semibold text-success">
+                            ₹{{ "{:,.0f}".format(emp.salary) }}
+                        </td>
+                        <td class="text-center">
+                            <a href="/employee/employeeDetail/{{ emp.id }}"
+                               class="btn btn-sm btn-outline-info me-1" title="View">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="/employee/employeeUpdate/{{ emp.id }}"
+                               class="btn btn-sm btn-outline-warning me-1" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="/employee/employeeDelete/{{ emp.id }}"
+                               class="btn btn-sm btn-outline-danger"
+                               title="Delete"
+                               onclick="return confirm('Delete {{ emp.name }}? This cannot be undone.')">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {# ── Pagination ── #}
+        {% if pagination.pages > 1 %}
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center px-4 py-3 border-top">
+            <p class="mb-2 mb-md-0 text-muted small">
+                Showing
+                <strong>{{ (pagination.page - 1) * per_page + 1 }}</strong>
+                –
+                <strong>{{ [(pagination.page * per_page), total] | min }}</strong>
+                of <strong>{{ total }}</strong> results
+            </p>
+
+            <nav aria-label="Employee pagination">
+                <ul class="pagination pagination-sm mb-0">
+
+                    {# Previous #}
+                    <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                        <a class="page-link"
+                           href="{{ list_url(page=pagination.prev_num) }}"
+                           aria-label="Previous">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+
+                    {# Page numbers — show up to 7 pages around current #}
+                    {% for p in pagination.iter_pages(left_edge=1, left_current=2, right_current=3, right_edge=1) %}
+                        {% if p %}
+                            <li class="page-item {% if p == pagination.page %}active{% endif %}">
+                                <a class="page-link" href="{{ list_url(page=p) }}">{{ p }}</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link">…</span></li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {# Next #}
+                    <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                        <a class="page-link"
+                           href="{{ list_url(page=pagination.next_num) }}"
+                           aria-label="Next">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+
+        {% else %}
+        {# ── Empty state ── #}
+        <div class="text-center py-5">
+            <i class="bi bi-person-x display-4 text-muted"></i>
+            <p class="mt-3 mb-1 fs-5 fw-semibold">No employees found</p>
+            <p class="text-muted">
+                {% if search or department or min_salary or max_salary %}
+                    Try adjusting your search or filter criteria.
+                    <a href="{{ url_for('employee.employee_list') }}">Clear all filters</a>
+                {% else %}
+                    Get started by <a href="/employee/add">adding a new employee</a>.
+                {% endif %}
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</div>
 
 {% endblock %}
